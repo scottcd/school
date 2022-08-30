@@ -1,0 +1,10 @@
+[INFO] 01:22:00 (MainThread)             starting at Tue Aug 30 01:22:00 2022
+[INFO] 01:22:00 (worker)                 Starting at Tue Aug 30 01:22:00 2022 - should exit at Tue Aug 30 01:22:19 2022
+[INFO] 01:22:00 (worker_by_another_name) Starting at Tue Aug 30 01:22:00 2022 - should exit at Tue Aug 30 01:22:14 2022
+[INFO] 01:22:00 (Thread-1)               Starting at Tue Aug 30 01:22:00 2022 - should exit at Tue Aug 30 01:22:12 2022
+[INFO] 01:22:00 (Thread-2)               Starting at Tue Aug 30 01:22:00 2022 - should exit at Tue Aug 30 01:22:08 2022
+[INFO] 01:22:00 (MainThread)             exiting at Tue Aug 30 01:22:00 2022
+[INFO] 01:22:00 (Thread-2)               Exiting at Tue Aug 30 01:22:08 2022
+[INFO] 01:22:00 (Thread-1)               Exiting at Tue Aug 30 01:22:12 2022
+[INFO] 01:22:00 (worker_by_another_name) Exiting at Tue Aug 30 01:22:14 2022
+[INFO] 01:22:00 (worker)                 Exiting at Tue Aug 30 01:22:19 2022

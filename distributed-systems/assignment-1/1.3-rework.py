@@ -41,6 +41,8 @@
 #    time.sleep - stop thread processing for specified number of seconds
 #
 import argparse
+from ast import parse
+from ctypes import ArgumentError
 import threading
 import time
 
@@ -71,7 +73,7 @@ def sample_thread( sleep_time ):
     """ sleep for a caller-specified period of time """
     err_to_str = lambda err: '' if str(err) is None else ': ' + str(err)
     #
-    try:
+    try: 
         print( f'Thread {threading.current_thread().name} started - sleeping for {sleep_time} seconds' )
         time.sleep( sleep_time )
         print( f'Thread {threading.current_thread().name} ending' )
@@ -95,28 +97,106 @@ def thread_count_parser( value ):
     except:
         raise argparse.ArgumentTypeError( f'\ninvalid thread count: {value}\nmust be an integer' )
 
-def thread_name_list_parser( string ):
+def sleep_time_parser( value ):
+    """ parse a comma-separated list of nonnegative floating point values denoting sleep times """
+    try:
+        raw_sleep_time = DEFAULT_THREAD_SLEEP_TIME if value == '' else float(value)
+    
+        if raw_sleep_time > MAX_THREAD_SLEEP_TIME:
+            print( f'?? limiting sleep time (was {raw_sleep_time}) to {MAX_THREAD_SLEEP_TIME}' )
+        if raw_sleep_time < 0:
+            print( f'?? invalid negative sleep time ({raw_sleep_time}); changing to 0' )
+        return max(0, min(MAX_THREAD_SLEEP_TIME, raw_sleep_time))
+    except:
+        raise argparse.ArgumentTypeError( f'\ninvalid sleep time list: {value}\n must be a floating point value' )
+
+def split_list( string ):
     """
-    parse a comma-separated list of thread names
+    parse a (a),(b),(c)... list
+    """
+    list = string.split('),(')
+    
+    for i in range(len(list)):
+        list[i] = list[i].replace('(', '')
+        list[i] = list[i].replace(')', '')
+    
+
+    return list
+
+def split_pairs( unpaired_list ):
+    """
+    parse a comma-separated list of pairs of thread names and sleep times
+    """
+
+    return [ x.split(',') for x in unpaired_list ]
+
+def exit_program_with_error (error):
+    """"""
+    print(error)
+    exit(1)
+
+
+def thread_pair_list_parser( args ):
+    """
+    parse a parentheses-separated list of thread names & sleep times separated by commas.
+    check for clean user input and report discrepancies to the user.
     special-case thread name semantics;
         empty name - use Python default name
         None -       use Python default name
+    special-case sleep semantics;
+        empty time - use DEFAULT_THREAD_SLEEP_TIME
     """
-    return string.split(',')
+    # split the list into each pair
+    unpaired_list = split_list(args)
+    # next, split the pairs
+    paired_list = split_pairs(unpaired_list)
+    
+    if len(paired_list) > MAX_THREAD_COUNT:
+        error_message = f"There are more arguments than there are max threads allowed. ({MAX_THREAD_COUNT})"
+        exit_program_with_error(error_message)
 
-def sleep_time_list_parser( values ):
-    """ parse a comma-separated list of nonnegative floating point values denoting sleep times """
-    try:
-        raw_sleep_times = [ DEFAULT_THREAD_SLEEP_TIME if sleep_time == '' else float(sleep_time) for sleep_time in values.split(',') ]
-        for time in raw_sleep_times:
-            if time > MAX_THREAD_SLEEP_TIME:
-                print( f'?? limiting sleep time (was {time}) to {MAX_THREAD_SLEEP_TIME}' )
-            if time < 0:
-                print( f'?? invalid negative sleep time ({time}); changing to 0' )
-        return [ max(0, min(MAX_THREAD_SLEEP_TIME, time)) for time in raw_sleep_times ]
-    except:
-        raise argparse.ArgumentTypeError( f'\ninvalid sleep time list: {values}\ntimes must be a comma-separated list of floating point values' )
+    parsed_list = []
+    type_exceptions = []
+    numargs_exceptions = []
 
+    # 3 cases: user gave time & name, user gave name, user gave time; 
+    # error cases: user gives too many args, user gives args in wrong orders
+    for list in paired_list:       
+        try:
+            if len(list) > 2:
+               raise ArgumentError
+            elif len(list) == 2:
+                tp_args = (list[0], sleep_time_parser(list[1]))
+                parsed_list.append(tp_args)
+            else:
+                # if len==1, the argument could be time OR a name.
+                try:
+                    float(list[0])
+                    tp_args = (None, sleep_time_parser(list[0]))
+                except:
+                    tp_args = (list[0], sleep_time_parser(''))
+                finally:
+                    parsed_list.append(tp_args)
+        except ArgumentError:
+            numargs_exceptions.append(list)
+        except argparse.ArgumentTypeError:
+            type_exceptions.append(list)
+
+    error_message = ''
+    exit_from_input_error = False
+    if len(type_exceptions) > 0:
+        error_message += 'The following -tp arguments are not in the correct format. Time was not able to be parsed.\n'
+        error_message += str([ex for ex in type_exceptions]) + "\n"
+        exit_from_input_error = True
+    if len(numargs_exceptions) > 0:
+        error_message += 'The following -tp arguments are not in the correct format. Too many arguments were given.\n'
+        error_message += str([ex for ex in numargs_exceptions]) + "\n"
+        exit_from_input_error = True
+    if exit_from_input_error:
+        exit_program_with_error(error_message)
+        
+
+    return parsed_list
 
 # ================================================
 #    Program Main
@@ -131,8 +211,7 @@ try:
     #
     parser = argparse.ArgumentParser( prog='thread-generator', description='Run user-specified number of threads that sleep, then exit.')
     parser.add_argument( '-tc', '--thread-count', type=thread_count_parser,     dest='thread_count',  default=DEFAULT_THREAD_COUNT )
-    parser.add_argument( '-tn', '--thread-names', type=thread_name_list_parser, dest='thread_names',  default=[] )
-    parser.add_argument( '-st', '--sleep-times',  type=sleep_time_list_parser,  dest='sleep_times',   default=[] )
+    parser.add_argument( '-tp', '--thread-pairs',  type=thread_pair_list_parser,  dest='thread_pairs',   default=[] )
 
     # parse the arguments, filling out the lists of parameters for thread launch
     #
@@ -141,14 +220,21 @@ try:
     # fill out the lists of parameters for thread launch
     #
     filler = lambda l, item: [ item ] * max( 0, parsed_args.thread_count - len( l ) )
-    parsed_args.thread_names += filler( parsed_args.thread_names, None )
-    parsed_args.sleep_times += filler( parsed_args.sleep_times, DEFAULT_THREAD_SLEEP_TIME )
+    parsed_args.thread_pairs += filler(parsed_args.thread_pairs, (None, DEFAULT_THREAD_SLEEP_TIME))
+
+    # check for more thread pairs than specified thread count
+    #
+    if len(parsed_args.thread_pairs) > parsed_args.thread_count:
+        error_message = f"There are more arguments ({len(parsed_args.thread_pairs)}) than there are max threads allowed. ({parsed_args.thread_count})"
+        exit_program_with_error(error_message)
 
     # finally, launch the threads
     #
     for i in range(parsed_args.thread_count):
-        threading.Thread(target=sample_thread, name=parsed_args.thread_names[i], args=(parsed_args.sleep_times[i],)).start()
-    print( f'{my_name} - ending' )
+        
+        threading.Thread(target=sample_thread, name=parsed_args.thread_pairs[i][0], args=(parsed_args.thread_pairs[i][1],)).start()
+        print( f'{my_name} - ending' )
+
 
 except Exception as err:
-    print( aborting(my_name, err) )
+    print( aborting(my_name, err))
