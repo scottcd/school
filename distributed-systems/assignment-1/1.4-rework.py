@@ -129,36 +129,33 @@ class thread_pair_list_parser(argparse.Action):
         super(thread_pair_list_parser, self).__init__(option_strings, dest, **kwargs)
     def __call__(self, parser, namespace, values, option_string=None):
         try:
-            # split the list into each pair
-            unpaired_list = self.split_list(values)
-            print(unpaired_list)
-            # next, split the pairs
-            paired_list = self.split_pairs(unpaired_list)
-            print(paired_list)
-            setattr(namespace, self.dest,  [x for x in unpaired_list])
-        except Exception as e:
-            print(f'{e.args}')
+            raw_string = ''.join(values.split())
+            thread_pairs = raw_string.split('),(')
+            parsed_list = []
+            bad_args = []
+
+            for thread in thread_pairs:
+                try:
+                    thread = thread.lstrip('(')
+                    thread = thread.rstrip(')')
+                    args = thread.split(',')
+                    
+                    if len(args) > 2:
+                        raise argparse.ArgumentTypeError( f'\ninvalid arguments: {bad_args}\n can only have two args: (name, time)' )
+
+                    parsed_list.append((args[0], float(args[1])))
+                    setattr(namespace, self.dest,  [x for x in parsed_list])
+                except:
+                    bad_args.append(thread)
+            
+            if bad_args:
+                raise argparse.ArgumentTypeError( f'\ninvalid arguments: {bad_args}\n must be in the format (name, time)' )
+                
+
+        except Exception as err:
+            print( aborting(bad_args, err) )
+            exit(1)
             #raise argparse.ArgumentTypeError( f'\ninvalid sleep time list: {values}\ntimes must be a comma-separated list of floating point values' )
-   
-    def split_list(self, string ):
-        """
-        parse a (a),(b),(c)... list
-        """
-        list = string.split('),(')
-        
-        for i in range(len(list)):
-            list[i] = list[i].replace('(', '')
-            list[i] = list[i].replace(')', '')
-        
-
-        return list
-
-    def split_pairs(self, unpaired_list ):
-        """
-        parse a comma-separated list of pairs of thread names and sleep times
-        """
-
-        return [ x.split(',') for x in unpaired_list ]
 
 
 # ================================================
@@ -174,8 +171,6 @@ try:
     #
     parser = argparse.ArgumentParser( prog='thread-generator', description='Run user-specified number of threads that sleep, then exit.')
     parser.add_argument( '-tc', '--thread-count', action=thread_count_parser,     dest='thread_count', default=5, )
-    # parser.add_argument( '-tn', '--thread-names', action=thread_name_list_parser, dest='thread_names', default=[] )
-    # parser.add_argument( '-st', '--sleep-times',  action=sleep_time_list_parser,  dest='sleep_times',  default=[] )
     parser.add_argument( '-tp', '--thread-pairs',  action=thread_pair_list_parser,  dest='thread_pairs',   default=[] )
 
 
@@ -193,7 +188,6 @@ try:
     # finally, launch the threads
     #
    
-    print(parsed_args.thread_pairs)
     for i in range(parsed_args.thread_count):          
        threading.Thread(target=sample_thread, name=parsed_args.thread_pairs[i][0], args=(parsed_args.thread_pairs[i][1],)).start()
     print( f'{my_name} - ending' )

@@ -117,8 +117,19 @@ class thread_spec_list_parser(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         try:
             # (thread_name, (lifetime range min, lifetime range max))
-            print('hi')
-            setattr(namespace, self.dest, [x for x in [1,2,3] ] )
+            my_threads = []
+            
+            raw_string = ''.join(values.split())
+            thread_specs = raw_string.split('),(')
+
+            for thread in thread_specs:
+                thread = thread.lstrip('(')
+                thread = thread.rstrip(')')
+                trimmed = thread.split(',(')
+                sleep_time = trimmed[1].split(',')
+                my_threads.append(MyThread( name=trimmed[0], lifetime_range=(float(sleep_time[0]), float(sleep_time[1])) ))
+
+            setattr(namespace, self.dest, [x for x in my_threads ] )
         except:
             raise argparse.ArgumentTypeError( f'\ninvalid sleep time list: {values}\ntimes must be a comma-separated llist of floating point values' )
 
@@ -151,7 +162,10 @@ try:
     parser.add_argument( '-ts', '--thread-specs', action=thread_spec_list_parser,     dest='thread_specs',  default=[] )
     parser.add_argument( '-fn', '--file-name',  action=file_name_parser,  dest='file_name',   default='console' )
 
-    parsed_args = parser.parse_args( )
+    try:
+        parsed_args = parser.parse_args( )
+    except Exception as e:
+        print(e.args[0])
     
     if logger_destination == 'console':
         logging.basicConfig(level=logging.DEBUG, format=f'[%(levelname)s] {hour()}:{minute()}:{second()} %(message)s')

@@ -93,28 +93,19 @@ class thread_spec_list_parser(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         try:
             # (thread_name, (lifetime range min, lifetime range max))
-            raw_string = ''.join(values.split())
-            # split by ),( to get each list item
-            
-            raw_string = raw_string.lstrip('(')
-            raw_string = raw_string.rstrip(')')
-            trimmed = raw_string.split(',(')
-            print(trimmed)
-            print(trimmed[1].split(','))
-            
-            ready = []
-            ready.append(trimmed[0])
-            ready.append(trimmed[1].split(','))
-
             my_threads = []
+            
+            raw_string = ''.join(values.split())
+            thread_specs = raw_string.split('),(')
 
+            for thread in thread_specs:
+                thread = thread.lstrip('(')
+                thread = thread.rstrip(')')
+                trimmed = thread.split(',(')
+                sleep_time = trimmed[1].split(',')
+                my_threads.append(MyThread( name=trimmed[0], lifetime_range=(float(sleep_time[0]), float(sleep_time[1])) ))
 
-            my_threads.append(MyThread( name='worker', lifetime_range=(14.0, 20.0) ))
-            #values.
-
-
-            print(ready)
-            setattr(namespace, self.dest, [x for x in ready ] )
+            setattr(namespace, self.dest, [x for x in my_threads ] )
         except:
             raise argparse.ArgumentTypeError( f'\ninvalid sleep time list: {values}\ntimes must be a comma-separated llist of floating point values' )
 
@@ -127,7 +118,7 @@ class file_name_parser(argparse.Action):
             file_name = value
             setattr(namespace, self.dest, file_name )
         except:
-            raise argparse.ArgumentTypeError( f'\ninvalid sleep time list: {value}\ntimes must be a comma-separated llist of floating point values' )
+            raise argparse.ArgumentTypeError( f'\ninvalid argument format: {value}\nArgument must be in the form (name, (lifetime range, lifetime range))' )
 
 
 # ================================================
@@ -146,7 +137,10 @@ try:
     parser.add_argument( '-ts', '--thread-specs', action=thread_spec_list_parser,     dest='thread_specs',  default=[] )
     parser.add_argument( '-fn', '--file-name',  action=file_name_parser,  dest='file_name',   default='console' )
 
-    parsed_args = parser.parse_args( )
+    try:
+        parsed_args = parser.parse_args( )
+    except Exception as e:
+        print(e.args[0])
 
     # threads_to_run - list of threading.Thread objects to run
     #
