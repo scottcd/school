@@ -111,12 +111,12 @@ class MyThread(threading.Thread):
 # +++++++++++++++++++++++++++++++++++++++++++++++
 #
 class thread_spec_list_parser(argparse.Action):
-    """ parse a comma-separated list of nonnegative floating point values denoting sleep times """
+    """ parse a list of (thread_name, (lifetime range min, lifetime range max)) separated threads into a list of thread tuples """
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
         super(thread_spec_list_parser, self).__init__(option_strings, dest, **kwargs)
     def __call__(self, parser, namespace, values, option_string=None):
         try:
-            # (thread_name, (lifetime range min, lifetime range max))
+            # 
             my_threads = []
             
             raw_string = ''.join(values.split())
@@ -134,7 +134,7 @@ class thread_spec_list_parser(argparse.Action):
             raise argparse.ArgumentTypeError( f'\ninvalid sleep time list: {values}\ntimes must be a comma-separated llist of floating point values' )
 
 class file_name_parser(argparse.Action):
-    """ parse a comma-separated list of nonnegative floating point values denoting sleep times """
+    """ parse a file name argument """
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
         super(file_name_parser, self).__init__(option_strings, dest, **kwargs)
     def __call__(self, parser, namespace, value, option_string=None):
@@ -144,7 +144,7 @@ class file_name_parser(argparse.Action):
             logger_destination = value
             setattr(namespace, self.dest, file_name )
         except:
-            raise argparse.ArgumentTypeError( f'\ninvalid sleep time list: {value}\ntimes must be a comma-separated llist of floating point values' )
+            raise argparse.ArgumentTypeError( f'\ninvalid file name: {value}\nThere was an error using this file name.' )
 
 # ================================================
 #    Program Main

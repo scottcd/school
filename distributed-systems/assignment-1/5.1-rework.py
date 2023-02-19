@@ -129,6 +129,14 @@ try:
 
 	# create two tests for every <name, delay> pair - one for an ordinary thread and one for a daemon thread
 	#
+    threads_to_run = [
+        MyThread( name='regular_1', lifetime_range=(20.0, 25.0) ),
+        MyThread( name='regular_2', lifetime_range=(15.0, 20.0) ),
+        MyThread( name='daemon_1',  lifetime_range=(35.0, 45.0), is_daemon=True ),
+        MyThread( name='daemon_2',  lifetime_range=(30.0, 40.0), is_daemon=True )
+    ]
+
+
     for (i, (core_thread_name, wait_time)) in enumerate(test_name_wait_time_pairs):
        thread_tests += [ Thread_test( MyThread(                 name=f'non-daemon {i+1} - {core_thread_name}' ), wait_time ) ]
        thread_tests += [ Thread_test( MyThread( is_daemon=True, name=f'daemon {i+1} - {core_thread_name}' ),     wait_time ) ]
@@ -143,12 +151,24 @@ try:
 
     # create and launch one thread per entry in thread name matrix
     #
-    my_logger.info( 'starting main execution' )
-    for test in thread_tests:
+    for thread in threads_to_run:
+        test = Thread_test(thread, wait_time)
         test.thread.start()
-        test.thread.join(test.wait_time)
-        my_logger.info( f'{test.thread.name} is {"" if test.thread.is_alive() else "NOT "}alive at join point\n' )
+    
+    my_logger.info( 'starting main execution' )
+    starttime = time.time()
+    
+    while True:
+        thread_names = [x.name for x in threading.enumerate() if x.name != 'MainThread']
+        if not thread_names:
+            break
+        
+        my_logger.info( f'threads still alive at {time.ctime()}: {thread_names}')
+        time.sleep(3)
+        
+
     my_logger.info( 'exiting' )
+    
 
 except:
     my_logger.exception( aborting() )

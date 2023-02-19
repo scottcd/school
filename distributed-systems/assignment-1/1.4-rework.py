@@ -124,7 +124,7 @@ class sleep_time_list_parser(argparse.Action):
             raise argparse.ArgumentTypeError( f'\ninvalid sleep time list: {values}\ntimes must be a comma-separated llist of floating point values' )
 
 class thread_pair_list_parser(argparse.Action):
-    """ parse a comma-separated list of nonnegative floating point values denoting sleep times """
+    """ parse a list of (thread_name, sleep_times) into a list of thread tuple """
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
         super(thread_pair_list_parser, self).__init__(option_strings, dest, **kwargs)
     def __call__(self, parser, namespace, values, option_string=None):
@@ -136,10 +136,12 @@ class thread_pair_list_parser(argparse.Action):
 
             for thread in thread_pairs:
                 try:
+                    # trim unneeded characters
                     thread = thread.lstrip('(')
                     thread = thread.rstrip(')')
                     args = thread.split(',')
                     
+                    # only name, time allowed
                     if len(args) > 2:
                         raise argparse.ArgumentTypeError( f'\ninvalid arguments: {bad_args}\n can only have two args: (name, time)' )
 
@@ -149,13 +151,11 @@ class thread_pair_list_parser(argparse.Action):
                     bad_args.append(thread)
             
             if bad_args:
-                raise argparse.ArgumentTypeError( f'\ninvalid arguments: {bad_args}\n must be in the format (name, time)' )
-                
+                raise argparse.ArgumentTypeError( f'\ninvalid arguments: {bad_args}\n must be in the format (name, time)' )          
 
         except Exception as err:
             print( aborting(bad_args, err) )
             exit(1)
-            #raise argparse.ArgumentTypeError( f'\ninvalid sleep time list: {values}\ntimes must be a comma-separated list of floating point values' )
 
 
 # ================================================
@@ -182,7 +182,6 @@ try:
     filler = lambda l, item: [ item ] * max( 0, parsed_args.thread_count - len( l ) )
     # parsed_args.thread_names += filler( parsed_args.thread_names, None )
     # parsed_args.sleep_times += filler( parsed_args.sleep_times, DEFAULT_THREAD_SLEEP_TIME )
-    
     parsed_args.thread_pairs += filler(parsed_args.thread_pairs, (None, DEFAULT_THREAD_SLEEP_TIME))
 
     # finally, launch the threads

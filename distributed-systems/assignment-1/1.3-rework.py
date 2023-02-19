@@ -110,25 +110,6 @@ def sleep_time_parser( value ):
     except:
         raise argparse.ArgumentTypeError( f'\ninvalid sleep time list: {value}\n must be a floating point value' )
 
-def split_list( string ):
-    """
-    parse a (a),(b),(c)... list
-    """
-    list = string.split('),(')
-    
-    for i in range(len(list)):
-        list[i] = list[i].replace('(', '')
-        list[i] = list[i].replace(')', '')
-    
-
-    return list
-
-def split_pairs( unpaired_list ):
-    """
-    parse a comma-separated list of pairs of thread names and sleep times
-    """
-
-    return [ x.split(',') for x in unpaired_list ]
 
 def exit_program_with_error (error):
     """"""
@@ -147,11 +128,13 @@ def thread_pair_list_parser( args ):
         empty time - use DEFAULT_THREAD_SLEEP_TIME
     """
     # split the list into each pair
-    unpaired_list = split_list(args)
-    # next, split the pairs
-    paired_list = split_pairs(unpaired_list)
+    raw_string = ''.join(args.split())
     
-    if len(paired_list) > MAX_THREAD_COUNT:
+    thread_pairs = raw_string.split('),(')
+    # next, split the pairs
+    #paired_list = split_pairs(thread_pairs)
+    
+    if len(thread_pairs) > MAX_THREAD_COUNT:
         error_message = f"There are more arguments than there are max threads allowed. ({MAX_THREAD_COUNT})"
         exit_program_with_error(error_message)
 
@@ -161,27 +144,35 @@ def thread_pair_list_parser( args ):
 
     # 3 cases: user gave time & name, user gave name, user gave time; 
     # error cases: user gives too many args, user gives args in wrong orders
-    for list in paired_list:       
+    for thread in thread_pairs:       
         try:
-            if len(list) > 2:
+            # trim unneeded characters
+            thread = thread.lstrip('(')
+            thread = thread.rstrip(')')
+            args = thread.split(',')
+
+            if len(args) > 2:
                raise ArgumentError
-            elif len(list) == 2:
-                tp_args = (list[0], sleep_time_parser(list[1]))
+            elif len(args) == 2:
+                tp_args = (args[0], sleep_time_parser(args[1]))
                 parsed_list.append(tp_args)
             else:
                 # if len==1, the argument could be time OR a name.
                 try:
-                    float(list[0])
-                    tp_args = (None, sleep_time_parser(list[0]))
+                    float(args[0])
+                    tp_args = (None, sleep_time_parser(args[0]))
                 except:
-                    tp_args = (list[0], sleep_time_parser(''))
+                    tp_args = (args[0], sleep_time_parser(''))
                 finally:
                     parsed_list.append(tp_args)
         except ArgumentError:
-            numargs_exceptions.append(list)
+            numargs_exceptions.append(thread)
         except argparse.ArgumentTypeError:
-            type_exceptions.append(list)
+            type_exceptions.append(thread)
 
+
+    # if we found an error and recorded it, print out the error arg and end program.
+    #
     error_message = ''
     exit_from_input_error = False
     if len(type_exceptions) > 0:
@@ -192,6 +183,7 @@ def thread_pair_list_parser( args ):
         error_message += 'The following -tp arguments are not in the correct format. Too many arguments were given.\n'
         error_message += str([ex for ex in numargs_exceptions]) + "\n"
         exit_from_input_error = True
+    # we use the boolean to be able to record and print ALL errors.
     if exit_from_input_error:
         exit_program_with_error(error_message)
         

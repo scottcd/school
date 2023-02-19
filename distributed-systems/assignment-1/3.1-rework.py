@@ -87,12 +87,11 @@ class MyThread(threading.Thread):
 # +++++++++++++++++++++++++++++++++++++++++++++++
 #
 class thread_spec_list_parser(argparse.Action):
-    """ parse a comma-separated list of nonnegative floating point values denoting sleep times """
+    """ parse a list of (thread_name, (lifetime range min, lifetime range max)) into a list of thread tuples """
     def __init__(self, option_strings, dest, nargs=None, **kwargs):
         super(thread_spec_list_parser, self).__init__(option_strings, dest, **kwargs)
     def __call__(self, parser, namespace, values, option_string=None):
         try:
-            # (thread_name, (lifetime range min, lifetime range max))
             my_threads = []
             
             raw_string = ''.join(values.split())
