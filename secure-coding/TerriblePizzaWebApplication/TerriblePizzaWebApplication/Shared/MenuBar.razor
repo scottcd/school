@@ -1,0 +1,39 @@
+﻿@namespace SharedComponents
+@inject ProtectedLocalStorage ProtectedSessionStore
+
+
+<div class="main">
+    <div class="top-row px-4" style="float:right">
+        @if (account is null) {
+            <NavLink class="nav-link" href="login" Match="NavLinkMatch.All">
+                Login <span class="oi oi-account-login" aria-hidden="true"></span>
+            </NavLink>
+        }
+        else {
+            <NavLink class="nav-link" href="myaccount" Match="NavLinkMatch.All">
+                Hello, @account.Name <span class="oi oi-bullhorn" aria-hidden="true"></span>
+            </NavLink>
+        }
+
+    </div>
+</div>
+
+
+@code{
+    private UserAccount account;
+    protected override async Task OnInitializedAsync() {
+        var result = await ProtectedSessionStore.GetAsync<UserAccount>("account");
+        if (result.Value is not null) {
+            account = result.Value;
+        }
+    }
+
+    public async Task<bool> GetAccount() {
+        var result = await ProtectedSessionStore.GetAsync<UserAccount>("account");
+        if (result.Value is not null) {
+            account = result.Value;
+            return true;
+        }
+        return false;
+    }
+}

@@ -1,0 +1,107 @@
+﻿@page "/order"
+@using SharedComponents
+@inject MyDbService service
+@inject ProtectedLocalStorage ProtectedSessionStore
+
+
+<MenuBar />
+
+<h1>Order</h1>
+<hr style="border: 1px solid #800000" />
+
+
+
+<div style="display: inline-block; width: 49%; height: 900px; vertical-align: top;">
+    <div class="center" style="width: 100%; height: 90%; overflow-y: scroll;">
+        <label class="title" style="font-size:x-large;">Selected Pizzas</label>
+        <hr style="border: 1px solid #FFFFFF" />
+        @foreach (var pizza in SelectedPizzas) {
+            <label class="labelrow">@pizza.Name    $@pizza.Price.00</label>
+        }
+    </div>
+
+
+    <div class="center" style="width: 100%; height: 10%;">
+
+        @if (DisableBuy is true) {
+            <label class="title" style="">Log in to Purchase.</label>
+        }
+        else {
+            <label class="labelrow">Total Amount: $@TotalAmount</label>
+            <button class="terriblebutton" @onclick="BuyPizzas" disabled="@DisableBuy">Buy</button>
+        }
+
+    </div>
+</div>
+
+<div style="display: inline-block; width: 49%; ">
+    @foreach (var pizza in AvailablePizzas) {
+        <div class="center" style="width: 100%; height:100px">
+            <label class="labelrow" style="width:50%; float:left">@pizza.Name</label>
+            <label class="labelrow" style="width:10%; float:right"> $@pizza.Price.00</label>
+            <label class="labelrow">A @pizza.Sauce sauce pizza with @pizza.Topping1 @pizza.Topping2 @pizza.Topping3</label>
+            <button class="terriblebutton" @onclick="args => AddPizza(pizza)">+</button>
+            <button class="terriblebutton" @onclick="args => RemovePizza(pizza)">-</button>
+        </div>
+
+    }
+</div>
+
+
+
+
+@code {
+    public List<Pizza> AvailablePizzas { get; set; }
+    public List<Pizza> SelectedPizzas { get; set; }
+    public UserAccount Account { get; set; }
+    public decimal TotalAmount { get; set; }
+    public bool DisableBuy { get; set; }
+
+    protected override async Task OnInitializedAsync() {
+        SelectedPizzas = new List<Pizza>();
+        TotalAmount = 0;
+        await RefreshPizzas();
+        var result = await ProtectedSessionStore.GetAsync<UserAccount>("account");
+        if (result.Value is not null) {
+            Account = result.Value;
+            DisableBuy = false;
+        }
+        else {
+            DisableBuy = true;
+        }
+
+    }
+    private async Task RefreshPizzas() {
+        AvailablePizzas = await service.GetAllPizzasAsync();
+        var a = ProtectedSessionStore.GetAsync<List<Pizza>>("pizzas").IsCompleted;
+        if (a is false) {
+            await ProtectedSessionStore.SetAsync("pizzas", SelectedPizzas);
+        }
+        var result = await ProtectedSessionStore.GetAsync<List<Pizza>>("pizzas");
+
+        if (result.Value is not null) {
+            SelectedPizzas = result.Value;
+        }
+    }
+    private async Task AddPizza(Pizza pizza) {
+        SelectedPizzas.Add(pizza);
+        TotalAmount += pizza.Price;
+        await ProtectedSessionStore.SetAsync("pizzas", SelectedPizzas);
+    }
+    private async Task RemovePizza(Pizza pizza) {
+        if (SelectedPizzas.Contains(pizza)) {
+            TotalAmount -= pizza.Price;
+        }
+        SelectedPizzas.Remove(pizza);
+        await ProtectedSessionStore.SetAsync("pizzas", SelectedPizzas);
+    }
+
+    private async Task BuyPizzas() {
+        Account.AddTotalMoneySpent(TotalAmount);
+        Account.AddTotalPizzasOrdered(SelectedPizzas.Count);
+        SelectedPizzas.Clear();
+        TotalAmount = 0;
+        await service.UpdateAccountAsync(Account);
+        await ProtectedSessionStore.SetAsync("pizzas", SelectedPizzas);
+    }
+}

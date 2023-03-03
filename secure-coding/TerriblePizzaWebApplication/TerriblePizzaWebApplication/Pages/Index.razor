@@ -1,0 +1,73 @@
+﻿@page "/"
+@inject MyDbService service
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ProtectedLocalStorage ProtectedSessionStore
+@using SharedComponents
+
+<MenuBar />
+<h1>Home - The Menu</h1>
+<hr style="border: 1px solid #800000" />
+
+
+<h2>Specialty Pizzas</h2>
+<ul>
+    @foreach (var item in Pizzas) {
+        <li>@item.Name</li>
+    }
+</ul>
+<br />
+<h2>Sizes</h2>
+<ul>
+    <li>Small ($5)</li>
+    <li>Medium ($7)</li>
+    <li>Large ($9)</li>
+</ul>
+<br />
+<h2>Images</h2>
+
+<div class="row">
+    <div class="column">
+        <img src="images\olive-pizza1.jpg" alt="Our 'Literally every variety of olive' pizza" style="width:100%">
+    </div>
+    <div class="column">
+        <img src="images\bat-cheese-pizza1.jpg" alt="Our 'Literally every variety of olive' pizza" style="width:100%">
+    </div>
+</div>
+
+<!-- Olive pizza image from https://pipandebby.com/pip-ebby/loaded-olive-pizza/ -->
+<!-- Cheese pizza image from https://www.foodnetwork.com/fn-dish/news/2014/08/the-best-cheese-to-put-on-your-pizza -->
+<hr />
+
+<style>
+    /* Three image containers (use 25% for four, and 50% for two, etc) */
+    .column {
+        float: left;
+        width: 50%;
+        padding: 5px;
+    }
+
+    /* Clear floats after image containers */
+    .row::after {
+        content: "";
+        clear: both;
+        display: table;
+    }
+</style> <!-- https://www.w3schools.com/howto/howto_css_images_side_by_side.asp -->
+
+@code{
+
+    public List<Pizza> Pizzas { get; set; }
+    public bool LoggedIn { get; set; } = false;
+    UserAccount Account { get; set; }
+    protected override async Task OnInitializedAsync() {
+        Pizzas = new List<Pizza>();
+        await RefreshAccounts();
+        var result = await ProtectedSessionStore.GetAsync<UserAccount>("account");
+        if (result.Value is not null) {
+            Account = result.Value;
+        }
+    }
+    private async Task RefreshAccounts() {
+        Pizzas = await service.GetAllPizzasAsync();
+    }
+}

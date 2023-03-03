@@ -1,0 +1,88 @@
+﻿@page "/login/register"
+@inject MyDbService service
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ProtectedLocalStorage ProtectedSessionStore
+@inject NavigationManager NavigationManager
+
+<hr />
+<hr />
+<hr />
+<hr />
+<hr />
+
+<div class="center">
+    <label class="title" style="font-size:x-large;">Register Below:</label>
+    <hr style="border: 1px solid #FFFFFF" />
+    <form @onsubmit="TryRegister">
+        <div class="form-group">
+            <label class="labelrow">Username:</label>
+            <input type="text" class="form-control inputrow" @bind="username" />
+        </div>
+
+        <div class="form-group">
+            <label class="labelrow">Password:</label>
+            <input type="text" class="form-control inputrow" @bind="password" />
+        </div>
+
+        <div class="form-group">
+            <label class="labelrow">Name:</label>
+            <input type="text" class="form-control inputrow" @bind="name" />
+        </div>
+
+        <div class="form-group">
+            <label class="labelrow">Email:</label>
+            <input type="text" class="form-control inputrow" @bind="email" />
+        </div>
+        <div class="form-group">
+            <label class="labelrow">Credit Card:</label>
+            <input type="text" class="form-control inputrow" @bind="creditCard" />
+        </div>
+
+        <div class="form-group">
+            <input type="submit" value="Submit" class="terriblebutton" style="margin-top: 20px;" />
+        </div>
+
+    </form>
+
+
+    @if (invalid is true) {
+        <label class="text-warning" style="margin-top: 10px;">Invalid Credentials.</label>
+    }
+</div>
+
+
+
+
+@code{
+    private UserAccount Account;
+    private string username, password, name, email, creditCard;
+    private bool invalid = false;
+
+    private async Task TryRegister() {
+        if (string.IsNullOrWhiteSpace(username) ||
+            string.IsNullOrWhiteSpace(password) ||
+            string.IsNullOrWhiteSpace(name) ||
+            string.IsNullOrWhiteSpace(email)) {
+            invalid = true;
+            return;
+        }
+
+        Random randy = new Random();
+        try {
+
+            int x = randy.Next(50000);
+            UserAccount newAccount = new UserAccount(x, username, password, name, email, creditCard, 0,0);
+            var d = await service.AddAccountAsync(newAccount);
+        }
+        catch (Exception) {
+            int x = randy.Next(50000);
+            UserAccount newAccount = new UserAccount(x, username, password, name, email, creditCard, 0,0);
+            await service.AddAccountAsync(newAccount);
+        }
+        NavigationManager.NavigateTo("/");
+    }
+
+    private async Task CancelRegister() {
+        NavigationManager.NavigateTo("/login");
+    }
+}

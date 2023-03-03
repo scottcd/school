@@ -1,0 +1,78 @@
+﻿@page "/review"
+@inject MyDbService service
+@using SharedComponents
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using System.IO;
+@inject ProtectedLocalStorage ProtectedSessionStore
+
+<MenuBar />
+
+<h1>Reviews</h1>
+<hr style="border: 1px solid #800000" />
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+</head>
+
+
+<body style="color:white">
+    <div class="center" style="width:100%;">
+        <label class="title" style="font-size:x-large;">Enter your own Review!</label>
+        <hr style="border: 1px solid #FFFFFF" />
+        <label class="labelrow">What did you think: </label>
+        <input class="inputrow" type="text" name="review" size="150" @bind="@review">
+        <br><br>
+        <button class="terriblebutton" @onclick="submitReview">Submit</button>
+        <br><br>
+    </div>
+
+    @foreach (Review reviewer in reviewList) {
+        <div class="center" style="width:100%;">
+            <div style="text-align: left;">
+                <img class="oi oi-person" /> @reviewer.User.Name
+                <label> at @reviewer.CreationDate</label>:
+            </div>
+            <div style="text-align: left;">
+                <label>@((MarkupString)reviewer.ReviewText)</label>
+            </div>
+            
+        </div>
+    }
+
+</body>
+
+
+
+@code {
+    private string review;
+    private List<Review> reviewList = new List<Review>();
+
+    protected override async Task OnInitializedAsync() {
+        // read json file to the list
+        var result = JsonSerializer.Deserialize<List<Review>>(File.ReadAllText("wwwroot/data/Reviews.json"));
+        reviewList = result;
+    }
+
+    private async void submitReview() {
+        //get the account of the currently logged in user
+        var result = await ProtectedSessionStore.GetAsync<UserAccount>("account");
+        UserAccount account = result.Value;
+
+        //if there is a logged in user and the review has been filled then add the review
+        if (account != null && !string.IsNullOrWhiteSpace(review)) {
+            //if the account has an existing review then overwrite it
+            foreach (Review reviewer in reviewList) {
+                if (reviewer.User.Id == account.Id) {
+                    reviewList.Remove(reviewer);
+                    break;
+                }
+            }
+
+            //add the review to the list and rewrite the json file
+            reviewList.Add(new Review(DateTime.Now, review, account));
+            await File.WriteAllTextAsync("wwwroot/data/Reviews.json", JsonSerializer.Serialize(reviewList));
+        }
+    }
+}
